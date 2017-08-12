@@ -1,11 +1,12 @@
 package com.amf.spotifylocal;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.Socket;
 import java.net.URL;
+import java.net.UnknownHostException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
@@ -64,7 +65,11 @@ public class Spotify {
     }
     
     public JSONObject play(String trackURI) throws IOException {
-        return request(String.format("/remote/play.json?oauth=%s&csrf=%s&uri=%s&context=%<s", oAuth, csrf, trackURI));
+        return play(trackURI, trackURI);
+    }
+    
+    public JSONObject play(String trackURI, String contextURI) throws IOException {
+        return request(String.format("/remote/play.json?oauth=%s&csrf=%s&uri=%s&context=%s", oAuth, csrf, trackURI, contextURI));
     }
     
     private JSONObject request(String path) throws IOException {
@@ -90,17 +95,20 @@ public class Spotify {
         return status().getBoolean("playing") ? pause() : play();
     }
     
+    public JSONObject version(String service) throws IOException {
+        return request("/service/version.json?service=" + service);
+    }
+    
     private static int findPort(String host, int portStart, int portEnd) throws IOException {
-        host = "http://" + host + ":";
         for (int port = portStart; port < portEnd; port++) {
-            try {
-                new URL(host + port).openStream();
+            try (Socket socket = new Socket(host, port)) {
                 return port;
             }
-            catch (FileNotFoundException ex) {
-                return port;
+            catch (IOException ex) {
+                if (ex instanceof UnknownHostException) {
+                    throw ex;
+                }
             }
-            catch (Exception ex) {}
         }
         throw new IOException("No port found.");
     }
