@@ -7,12 +7,20 @@ import java.net.HttpURLConnection;
 import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
 public class Spotify {
     
+    private static final DateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
+    
     private String csrf, oAuth, url;
+    
+    private Date expiration;
     
     private int port;
     
@@ -27,16 +35,7 @@ public class Spotify {
     public Spotify(String host, int port) throws IOException {
         this.port = port;
         url = "http://" + host + ":" + port;
-        URL url = new URL("https://open.spotify.com/token");
-        StringBuilder json = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                json.append(line);
-            }
-        }
-        JSONObject object = (JSONObject) new JSONTokener(json.toString()).nextValue();
-        oAuth = object.getString("t");
+        refreshOAuth();
         csrf = request("/simplecsrf/token.json").getString("token");
     }
     
@@ -46,6 +45,10 @@ public class Spotify {
     
     public String getCSRF() {
         return csrf;
+    }
+    
+    public long getExpiration() {
+        return expiration.getTime();
     }
     
     public String getOAuth() {
@@ -72,11 +75,7 @@ public class Spotify {
         return request(String.format("/remote/play.json?oauth=%s&csrf=%s&uri=%s&context=%s", oAuth, csrf, trackURI, contextURI));
     }
     
-    private JSONObject request(String path) throws IOException {
-        URL url = new URL(this.url + path);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestProperty("Origin", "https://open.spotify.com");
-        connection.connect();
+    private JSONObject readJSON(HttpURLConnection connection) throws IOException {
         StringBuilder json = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
             String line;
@@ -85,6 +84,28 @@ public class Spotify {
             }
         }
         return (JSONObject) new JSONTokener(json.toString()).nextValue();
+    }
+    
+    private void refreshOAuth() throws IOException {
+        URL url = new URL("https://open.spotify.com/token");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.connect();
+        try {
+            expiration = dateFormat.parse(connection.getHeaderField("Expires"));
+        }
+        catch (ParseException ex) {}
+        oAuth = readJSON(connection).getString("t");
+    }
+    
+    protected JSONObject request(String path) throws IOException {
+        if (new Date().after(expiration)) {
+            refreshOAuth();
+        }
+        URL url = new URL(this.url + path);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestProperty("Origin", "https://open.spotify.com");
+        connection.connect();
+        return readJSON(connection);
     }
     
     public JSONObject status() throws IOException {
