@@ -36,11 +36,19 @@ public class Spotify {
         this.port = port;
         url = "http://" + host + ":" + port;
         refreshOAuth();
-        csrf = request("/simplecsrf/token.json").getString("token");
+        csrf = request("/simplecsrf/token.json?").getString("token");
     }
     
     public Spotify(String host, int portStart, int portEnd) throws IOException {
         this(host, findPort(host, portStart, portEnd));
+    }
+    
+    private String buildURL(String route) {
+        StringBuilder url = new StringBuilder(this.url).append(route).append("oauth=").append(oAuth);
+        if (csrf != null) {
+            url.append("&csrf=").append(csrf);
+        }
+        return url.toString();
     }
     
     public String getCSRF() {
@@ -60,11 +68,11 @@ public class Spotify {
     }
     
     public JSONObject pause() throws IOException {
-        return request(String.format("/remote/pause.json?oauth=%s&csrf=%s&pause=true", oAuth, csrf));
+        return request("/remote/pause.json?pause=true&");
     }
     
     public JSONObject play() throws IOException {
-        return request(String.format("/remote/pause.json?oauth=%s&csrf=%s&pause=false", oAuth, csrf));
+        return request("/remote/pause.json?pause=false&");
     }
     
     public JSONObject play(String trackURI) throws IOException {
@@ -72,7 +80,7 @@ public class Spotify {
     }
     
     public JSONObject play(String trackURI, String contextURI) throws IOException {
-        return request(String.format("/remote/play.json?oauth=%s&csrf=%s&uri=%s&context=%s", oAuth, csrf, trackURI, contextURI));
+        return request(String.format("/remote/play.json?uri=%s&context=%s&", trackURI, contextURI));
     }
     
     private JSONObject readJSON(HttpURLConnection connection) throws IOException {
@@ -97,11 +105,11 @@ public class Spotify {
         oAuth = readJSON(connection).getString("t");
     }
     
-    protected JSONObject request(String path) throws IOException {
+    protected JSONObject request(String route) throws IOException {
         if (new Date().after(expiration)) {
             refreshOAuth();
         }
-        URL url = new URL(this.url + path);
+        URL url = new URL(buildURL(route));
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("Origin", "https://open.spotify.com");
         connection.connect();
@@ -109,7 +117,7 @@ public class Spotify {
     }
     
     public JSONObject status() throws IOException {
-        return request(String.format("/remote/status.json?oauth=%s&csrf=%s", oAuth, csrf));        
+        return request("/remote/status.json?");        
     }
     
     public JSONObject togglePlay() throws IOException {
@@ -117,7 +125,7 @@ public class Spotify {
     }
     
     public JSONObject version(String service) throws IOException {
-        return request("/service/version.json?service=" + service);
+        return request(String.format("/service/version.json?service=%s&", service));
     }
     
     private static int findPort(String host, int portStart, int portEnd) throws IOException {
