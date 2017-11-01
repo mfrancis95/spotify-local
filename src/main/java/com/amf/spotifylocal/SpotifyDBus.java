@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public class SpotifyDBus implements Spotify<String> {
+public class SpotifyDBus implements SkipControls<String>, Spotify<String> {
     
     private static SpotifyDBus spotify;
     

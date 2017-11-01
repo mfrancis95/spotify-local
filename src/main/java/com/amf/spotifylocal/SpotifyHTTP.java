@@ -18,7 +18,7 @@ public class SpotifyHTTP implements Spotify<JSONObject> {
     
     private static final DateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
     
-    private String csrf, oAuth, url;
+    private String csrf, host, oAuth, url;
     
     private Date expiration;
     
@@ -33,6 +33,7 @@ public class SpotifyHTTP implements Spotify<JSONObject> {
     }
     
     public SpotifyHTTP(String host, int port) throws IOException {
+        this.host = host;
         this.port = port;
         url = "http://" + host + ":" + port;
         refreshOAuth();
@@ -57,6 +58,10 @@ public class SpotifyHTTP implements Spotify<JSONObject> {
     
     public long getExpiration() {
         return expiration.getTime();
+    }
+    
+    public String getHost() {
+        return host;
     }
     
     public String getOAuth() {
