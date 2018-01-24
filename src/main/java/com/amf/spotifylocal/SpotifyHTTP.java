@@ -102,7 +102,6 @@ public class SpotifyHTTP implements Spotify<JSONObject> {
     private void refreshOAuth() throws IOException {
         URL url = new URL("https://open.spotify.com/token");
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.connect();
         try {
             expiration = dateFormat.parse(connection.getHeaderField("Expires"));
         }
@@ -117,7 +116,6 @@ public class SpotifyHTTP implements Spotify<JSONObject> {
         URL url = new URL(buildURL(route));
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("Origin", "https://open.spotify.com");
-        connection.connect();
         return readJSON(connection);
     }
     
